@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScanAI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+
+        body {
+            background-color: #000;
+            color: #00ff41; /* Verde matrix */
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.2;
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #00ff41;
+            box-shadow: 0 0 15px #00ff41;
+            position: relative;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2rem;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 10px #00ff41;
+            animation: flicker 3s infinite alternate;
+        }
+
+        .search-box {
+            display: flex;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        input {
+            flex: 1;
+            padding: 1rem;
+            background-color: rgba(0, 0, 0, 0.7);
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            box-shadow: 0 0 15px #00ff41;
+        }
+
+        input::placeholder {
+            color: #00ff41;
+            opacity: 0.7;
+        }
+
+        button {
+            padding: 1rem 2rem;
+            background-color: #000;
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-left: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1rem;
+        }
+
+        button:hover {
+            background-color: #00ff41;
+            color: #000;
+            box-shadow: 0 0 15px #00ff41;
+        }
+
+        .results {
+            border: 1px solid #00ff41;
+            padding: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: rgba(0, 0, 0, 0.8);
+            box-shadow: 0 0 10px #00ff41;
+        }
+
+        .person {
+            padding: 1rem;
+            border-bottom: 1px solid #00ff41;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .person:last-child {
+            border-bottom: none;
+        }
+
+        .person:hover {
+            background-color: rgba(0, 255, 65, 0.1);
+            transform: translateX(5px);
+        }
+
+        .person-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .person-name {
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .person-details {
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+
+        .status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #00ff41;
+            box-shadow: 0 0 8px #00ff41;
+        }
+
+        .scan-line {
+            position: absolute;
+            height: 2px;
+            width: 100%;
+            background: linear-gradient(90deg, transparent, #00ff41, transparent);
+            top: 0;
+            left: 0;
+            animation: scan 3s linear infinite;
+            display: none;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes flicker {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes scan {
+            0% {
+                top: 0;
+            }
+            100% {
+                top: 100%;
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(0, 255, 65, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(0, 255, 65, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 255, 65, 0);
+            }
+        }
+
+        /* Efeito de glitch no texto */
+        .glitch {
+            position: relative;
+        }
+
+        .glitch::before,
+        .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glitch::before {
+            left: 2px;
+            text-shadow: -2px 0 #ff00ff;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim 5s infinite linear alternate-reverse;
+        }
+
+        .glitch::after {
+            left: -2px;
+            text-shadow: -2px 0 #00ffff;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim2 5s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim {
+            0% {
+                clip: rect(42px, 9999px, 44px, 0);
+            }
+            5% {
+                clip: rect(12px, 9999px, 59px, 0);
+            }
+            10% {
+                clip: rect(48px, 9999px, 29px, 0);
+            }
+            15% {
+                clip: rect(42px, 9999px, 73px, 0);
+            }
+            20% {
+                clip: rect(63px, 9999px, 27px, 0);
+            }
+            25% {
+                clip: rect(34px, 9999px, 55px, 0);
+            }
+            30% {
+                clip: rect(86px, 9999px, 73px, 0);
+            }
+            35% {
+                clip: rect(20px, 9999px, 20px, 0);
+            }
+            40% {
+                clip: rect(26px, 9999px, 60px, 0);
+            }
+            45% {
+                clip: rect(25px, 9999px, 66px, 0);
+            }
+            50% {
+                clip: rect(57px, 9999px, 98px, 0);
+            }
+            55% {
+                clip: rect(5px, 9999px, 46px, 0);
+            }
+            60% {
+                clip: rect(82px, 9999px, 31px, 0);
+            }
+            65% {
+                clip: rect(54px, 9999px, 27px, 0);
+            }
+            70% {
+                clip: rect(28px, 9999px, 99px, 0);
+            }
+            75% {
+                clip: rect(45px, 9999px, 69px, 0);
+            }
+            80% {
+                clip: rect(23px, 9999px, 85px, 0);
+            }
+            85% {
+                clip: rect(54px, 9999px, 84px, 0);
+            }
+            90% {
+                clip: rect(45px, 9999px, 47px, 0);
+            }
+            95% {
+                clip: rect(24px, 9999px, 23px, 0);
+            }
+            100% {
+                clip: rect(32px, 9999px, 92px, 0);
+            }
+        }
+
+        @keyframes glitch-anim2 {
+            0% {
+                clip: rect(65px, 9999px, 100px, 0);
+            }
+            5% {
+                clip: rect(52px, 9999px, 74px, 0);
+            }
+            10% {
+                clip: rect(79px, 9999px, 85px, 0);
+            }
+            15% {
+                clip: rect(75px, 9999px, 5px, 0);
+            }
+            20% {
+                clip: rect(67px, 9999px, 61px, 0);
+            }
+            25% {
+                clip: rect(14px, 9999px, 79px, 0);
+            }
+            30% {
+                clip: rect(1px, 9999px, 66px, 0);
+            }
+            35% {
+                clip: rect(86px, 9999px, 30px, 0);
+            }
+            40% {
+                clip: rect(23px, 9999px, 98px, 0);
+            }
+            45% {
+                clip: rect(85px, 9999px, 72px, 0);
+            }
+            50% {
+                clip: rect(71px, 9999px, 75px, 0);
+            }
+            55% {
+                clip: rect(2px, 9999px, 48px, 0);
+            }
+            60% {
+                clip: rect(30px, 9999px, 16px, 0);
+            }
+            65% {
+                clip: rect(59px, 9999px, 50px, 0);
+            }
+            70% {
+                clip: rect(41px, 9999px, 62px, 0);
+            }
+            75% {
+                clip: rect(2px, 9999px, 82px, 0);
+            }
+            80% {
+                clip: rect(47px, 9999px, 73px, 0);
+            }
+            85% {
+                clip: rect(3px, 9999px, 27px, 0);
+            }
+            90% {
+                clip: rect(26px, 9999px, 55px, 0);
+            }
+            95% {
+                clip: rect(42px, 9999px, 97px, 0);
+            }
+            100% {
+                clip: rect(38px, 9999px, 49px, 0);
+            }
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .search-box {
+                flex-direction: column;
+            }
+            
+            button {
+                margin-left: 0;
+                margin-top: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="matrix-bg" id="matrixBg"></div>
+    <div class="container">
+        <header>
+            <h1 class="glitch" data-text="Scan Ai">Scan Ai</h1>
+            <p>Individual identification and location system</p>
+        </header>
+
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Enter name to search..." autocomplete="on">
+            <button id="searchBtn">Scan</button>
+            <div class="scan-line" id="scanLine"></div>
+        </div>
+        
+        <div class="results" id="results">
+            <!-- Os resultados serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // Dados de exemplo (pessoas)
+        const people = [
+            { id: 1, name: "Thomas Anderson", details: "Programmer - Location: Robot City", status: "active" },
+            { id: 2, name: "Trinity", details: "Hacker - Location: Zion", status: "active" },
+            { id: 3, name: "Morpheus", details: "Commander - Location: Nebuchadnezzar", status: "active" },
+            { id: 4, name: "Agent Smith", details: "Terminator Program - Location: Headquarters", status: "inactive" },
+            { id: 5, name: "Neo", details: "The Chosen - Location: Mobil Ave", status: "active" },
+            { id: 6, name: "Oracle", details: "Oracle Program - Location: Headquarters", status: "active" },
+            { id: 7, name: "Cipher", details: "Traitor - Location: Unknown", status: "inactive" },
+            { id: 8, name: "Tank", details: "Operator - Location: Zion", status: "active" },
+            { id: 9, name: "Dozer", details: "Crew Member - Location: Nebuchadnezzar", status: "active" },
+            { id: 10, name: "Persephone", details: "Exiled Program - Location: The Club", status: "active" }
+        ];
+
+        // Elementos DOM
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultsDiv = document.getElementById('results');
+        const scanLine = document.getElementById('scanLine');
+        const matrixBg = document.getElementById('matrixBg');
+
+        // Criar efeito de código caindo (Matrix)
+        function createMatrixEffect() {
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$#@%&!?*';
+            const fontSize = 14;
+            const columns = Math.floor(window.innerWidth / fontSize);
+            
+            // Criar colunas de código
+            for (let i = 0; i < columns; i++) {
+                const yPos = Math.random() * -100;
+                const delay = Math.random() * 5;
+                const duration = 5 + Math.random() * 10;
+                
+                const column = document.createElement('div');
+                column.style.position = 'absolute';
+                column.style.top = yPos + 'px';
+                column.style.left = (i * fontSize) + 'px';
+                column.style.color = '#00ff41';
+                column.style.fontSize = fontSize + 'px';
+                column.style.animation = `fall ${duration}s linear infinite`;
+                column.style.animationDelay = delay + 's';
+                column.style.opacity = Math.random() * 0.5 + 0.1;
+                
+                // Gerar conteúdo inicial
+                let content = '';
+                const rows = Math.floor(window.innerHeight / fontSize) + 1;
+                for (let j = 0; j < rows; j++) {
+                    content += characters.charAt(Math.floor(Math.random() * characters.length));
+                }
+                
+                column.textContent = content;
+                matrixBg.appendChild(column);
+            }
+            
+            // Adicionar keyframes para animação de queda
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fall {
+                    to {
+                        transform: translateY(100vh);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Buscar pessoas
+        function searchPeople() {
+            const searchText = searchInput.value.toLowerCase().trim();
+            
+            // Mostrar linha de escaneamento
+            scanLine.style.display = 'block';
+            
+            // Limpar resultados anteriores após um breve delay
+            setTimeout(() => {
+                resultsDiv.innerHTML = '';
+                
+                if (searchText === '') {
+                    scanLine.style.display = 'none';
+                    return;
+                }
+                
+                // Filtrar pessoas com base no texto de busca
+                const filteredPeople = people.filter(person => 
+                    person.name.toLowerCase().includes(searchText)
+                );
+                
+                // Exibir resultados
+                if (filteredPeople.length > 0) {
+                    filteredPeople.forEach(person => {
+                        const personElement = document.createElement('div');
+                        personElement.className = 'person';
+                        personElement.innerHTML = `
+                            <div class="person-info">
+                                <div class="person-name">${person.name}</div>
+                                <div class="person-details">${person.details}</div>
+                            </div>
+                            <div class="status ${person.status === 'active' ? 'pulse' : ''}"></div>
+                        `;
+                        resultsDiv.appendChild(personElement);
+                    });
+                } else {
+                    resultsDiv.innerHTML = '<div class="person">No results found. Subject may be outside the matrix.</div>';
+                }
+                
+                // Ocultar linha de escaneamento
+                scanLine.style.display = 'none';
+            }, 1000);
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            createMatrixEffect();
+            
+            // Event listeners
+            searchBtn.addEventListener('click', searchPeople);
+            searchInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    searchPeople();
+                }
+            });
+            
+            // Efeito de digitação no input
+            searchInput.addEventListener('focus', () => {
+                searchInput.style.boxShadow = '0 0 15px #00ff41';
+            });
+            
+            searchInput.addEventListener('blur', () => {
+                searchInput.style.boxShadow = 'none';
+            });
+        });
+
+        // Atualizar efeito Matrix no redimensionamento da janela
+        window.addEventListener('resize', () => {
+            matrixBg.innerHTML = '';
+            createMatrixEffect();
+        });
+    </script>
+</body>
+</html>
